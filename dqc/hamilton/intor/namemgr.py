@@ -22,6 +22,9 @@ class IntorNameManager(object):
         "r0": (3,),
         "r0r0": (9,),
         "r0r0r0": (27,),
+        "r_origj": (3,),
+        "rr_origj": (9,),
+        "rrr_origj": (27,),
     })
     op_comp = defaultdict(tuple, {  # type: ignore
         "ip": (3,),

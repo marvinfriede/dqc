@@ -8,9 +8,14 @@ __all__ = ["loadbasis"]
 _dtype = torch.double
 _device = torch.device("cpu")
 
-def loadbasis(cmd: str, dtype: torch.dtype = _dtype,
-              device: torch.device = _device, requires_grad: bool = False) -> \
-        List[CGTOBasis]:
+
+def loadbasis(
+    cmd: str,
+    dtype: torch.dtype = _dtype,
+    device: torch.device = _device,
+    requires_grad: bool = False,
+    normalized: bool = False,
+) -> List[CGTOBasis]:
     """
     Load basis from a file and return the list of CGTOBasis.
 
@@ -74,17 +79,28 @@ def loadbasis(cmd: str, dtype: torch.dtype = _dtype,
         angmoms = _expand_angmoms(desc[0], ncoeffs)
 
         # convert to tensor
-        alpha = torch.tensor(alphas, dtype=dtype, device=device, requires_grad=requires_grad)
+        alpha = torch.tensor(
+            alphas, dtype=dtype, device=device, requires_grad=requires_grad
+        )
         for i in range(ncoeffs):
-            coeff = torch.tensor(coeffs[i], dtype=dtype, device=device, requires_grad=requires_grad)
+            coeff = torch.tensor(
+                coeffs[i], dtype=dtype, device=device, requires_grad=requires_grad
+            )
             basis = CGTOBasis(angmom=angmoms[i], alphas=alpha, coeffs=coeff)
-            basis.wfnormalize_()
+
+            # MODIFIED
+            if normalized is True:
+                basis.normalized = True
+            else:
+                basis.wfnormalize_()
             res.append(basis)
     return res
+
 
 def _read_float(s: str) -> float:
     s = s.replace("D", "E")
     return float(s)
+
 
 def _get_basis_file(cmd: str) -> str:
     # parse the string command, check if the basis has already been downloaded
@@ -104,13 +120,16 @@ def _get_basis_file(cmd: str) -> str:
 
     # if the file does not exist, download it
     if not os.path.exists(fpath):
-        print("The %s basis for atomz %d does not exist, but we will download it" %
-              (raw_basisname, atomz))
+        print(
+            "The %s basis for atomz %d does not exist, but we will download it"
+            % (raw_basisname, atomz)
+        )
         if not os.path.exists(fdir):
             os.makedirs(fdir)
         _download_basis(fpath, atomz, raw_basisname)
 
     return fpath
+
 
 def _normalize_basisname(basisname: str) -> str:
     b = basisname.lower()
@@ -121,12 +140,15 @@ def _normalize_basisname(basisname: str) -> str:
     b = b.replace(",", "_")
     return b
 
+
 def _download_basis(fname: str, atomz: int, basisname: str) -> None:
     import basis_set_exchange as bse
+
     s = bse.get_basis(basisname, elements=[atomz], fmt="gaussian94")
     with open(fname, "w") as f:
         f.write(s)
     print("Downloaded to %s" % fname)
+
 
 def _expand_angmoms(s: str, n: int) -> List[int]:
     # convert the angular momentum characters into angmom and returns a list
@@ -136,8 +158,9 @@ def _expand_angmoms(s: str, n: int) -> List[int]:
     elif n % len(s) == 0:
         s = s * (n // len(s))
     else:
-        raise RuntimeError("Do not know how to read orbital %s with %d coefficient columns" %
-                           (s, n))
+        raise RuntimeError(
+            "Do not know how to read orbital %s with %d coefficient columns" % (s, n)
+        )
     s = s.lower()
     spdfmap = {
         "s": 0,
